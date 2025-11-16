@@ -1,10 +1,19 @@
 {
-  "name": "result-option",
+  "name": "rstypes",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
   "scripts": {
     "build": "tsc"
+  },
+  "exports": {
+    "./option": {
+      "default": "./lib/option.js",
+      "types": "./lib/option.d.ts"
+    },
+    "./result": {
+      "default": "./lib/result.js",
+      "types": "./lib/result.d.ts"
+    }
   },
   "keywords": [],
   "author": "",
