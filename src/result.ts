@@ -8,17 +8,12 @@ export function as_result<T>(fn: () => T): Result<T, unknown> {
     }
 }
 
-type ResultMatcher<T, E, R> = {
-    Ok(v: T): R;
-    Err(e: E): R;
-}
-
 export type Ok<T, E> = {
     is_ok(): this is Ok<T, E>;
     is_err(): this is Err<T, unknown>;
     map<U>(fn: (arg: T) => U): Ok<U, E>;
     map_err(): Ok<T, E>;
-    match<R>(matcher: ResultMatcher<T, E, R>): R;
+    match<R>(matcher: { Ok(v: T): R, Err(e: E): R }): R;
     match<R>(on_ok: (v: T) => R, on_err: (e: E) => R): R;
     unwrap(): T;
     unwrap_or(): T;
@@ -29,7 +24,7 @@ export type Err<T, E> = {
     is_err(): this is Err<T, E>;
     map(): Err<T, E>;
     map_err<F>(fn: (arg: E) => F): Err<T, F>;
-    match<R>(matcher: ResultMatcher<T, E, R>): R;
+    match<R>(matcher: { Ok(v: T): R, Err(e: E): R }): R;
     match<R>(on_ok: (v: T) => R, on_err: (e: E) => R): R;
     unwrap(_: never): never;
     unwrap_or<T>(default_value: T): T;
@@ -45,9 +40,9 @@ export const Ok = <T, E>(value: T) => ({
     unwrap() { return value; },
     unwrap_or() { return value; },
     unwrap_or_else() { return value; },
-    match<R>(matcher_or_ok, err) {
+    match<R>(matcher_or_ok) {
         if (("Ok" in matcher_or_ok) && ("Err" in matcher_or_ok)) {
-            return (matcher_or_ok as ResultMatcher<T, E, R>).Ok(value);
+            return (matcher_or_ok as { Ok: (value: T) => R }).Ok(value);
         }
         return matcher_or_ok(value);
     },
@@ -64,7 +59,7 @@ export const Err = <T, E>(error: E) => ({
     unwrap_or_else(otherwise) { return otherwise(error); },
     match<R>(matcher_or_ok, err) {
         if (("Ok" in matcher_or_ok) && ("Err" in matcher_or_ok)) {
-            return (matcher_or_ok as ResultMatcher<T, E, R>).Err(error);
+            return (matcher_or_ok as { Err: (error: E) => R }).Err(error);
         }
         return err(error);
     },
