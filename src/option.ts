@@ -132,6 +132,9 @@ export type None<T = unknown> = {
     unwrap_or_else(otherwise: () => T): T;
 };
 
+// Implementations below
+
+const nodeInspect = Symbol.for('nodejs.util.inspect.custom');
 export const Some = <T>(value: T) => ({
     expect(_) { return value },
     is_some() { return true; },
@@ -146,8 +149,13 @@ export const Some = <T>(value: T) => ({
     unwrap() { return value; },
     unwrap_or(_) { return value; },
     unwrap_or_else(_) { return value; },
-    toString() { return `Some(${value})`; }
-}) as Some<T>;
+    toString() { return `Some(${value})`; },
+    [nodeInspect](_depth, inspectOptions, inspect) {
+        const cyan = inspectOptions.colors ? "\x1b[36m" : "";
+        const reset = inspectOptions.colors ? "\x1b[0m" : "";
+        return `${cyan}Some${reset}(${inspect(value, inspectOptions)})`
+    }
+}) as unknown as Some<T>;
 export const None = Object.freeze({
     expect(message) { throw Error(message); },
     is_some() { return false; },
@@ -162,5 +170,10 @@ export const None = Object.freeze({
     unwrap(_) { throw Error("Cannot call unwrap on None"); },
     unwrap_or(default_value) { return default_value; },
     unwrap_or_else(otherwise) { return otherwise(); },
-    toString() { return "None"; }
+    toString() { return "None"; },
+    [nodeInspect](_depth, inspectOptions) {
+        const yellow = inspectOptions.colors ? "\x1b[33m" : "";
+        const reset = inspectOptions.colors ? "\x1b[0m" : "";
+        return `${yellow}None${reset}`;
+    }
 }) as unknown as None;

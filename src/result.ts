@@ -138,6 +138,9 @@ export type Err<T, E> = {
     unwrap_or_else<T>(otherwise: (err: E) => T): T;
 }
 
+// Implementations below
+
+const nodeInspect = Symbol.for('nodejs.util.inspect.custom');
 export const Ok = <T, E>(value: T) => ({
     expect(_) { return value; },
     is_ok() { return true; },
@@ -154,7 +157,12 @@ export const Ok = <T, E>(value: T) => ({
         return matcher_or_ok(value);
     },
     toString() { return `Ok(${value})`; },
-}) as Ok<T, E>;
+    [nodeInspect](_depth, inspectOptions, inspect) {
+        const green = inspectOptions.colors ? "\x1b[32m" : "";
+        const reset = inspectOptions.colors ? "\x1b[0m" : "";
+        return `${green}Ok${reset}(${inspect(value, inspectOptions)})`
+    }
+}) as unknown as Ok<T, E>;
 export const Err = <T, E>(error: E) => ({
     expect(message) { throw Error(message) },
     is_ok() { return false; },
@@ -171,4 +179,9 @@ export const Err = <T, E>(error: E) => ({
         return err(error);
     },
     toString() { return `Err(${error})`; },
-}) as Err<T, E>;
+    [nodeInspect](_depth, inspectOptions, inspect) {
+        const red = inspectOptions.colors ? "\x1b[31m" : "";
+        const reset = inspectOptions.colors ? "\x1b[0m" : "";
+        return `${red}Err${reset}(${inspect(error, inspectOptions)})`
+    }
+}) as unknown as Err<T, E>;
