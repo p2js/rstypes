@@ -158,8 +158,8 @@ export const Ok = <T, E>(value: T) => ({
     },
     toString() { return `Ok(${value})`; },
     [nodeInspect](_depth, inspectOptions, inspect) {
-        const green = inspectOptions.colors ? "\x1b[32m" : "";
-        const reset = inspectOptions.colors ? "\x1b[0m" : "";
+        const green = inspectOptions.colors ? `\x1b[${inspect.colors.green[0]}m` : "";
+        const reset = inspectOptions.colors ? `\x1b[${inspect.colors.reset[0]}m` : "";
         return `${green}Ok${reset}(${inspect(value, inspectOptions)})`
     }
 }) as unknown as Ok<T, E>;
@@ -180,8 +180,8 @@ export const Err = <T, E>(error: E) => ({
     },
     toString() { return `Err(${error})`; },
     [nodeInspect](_depth, inspectOptions, inspect) {
-        const red = inspectOptions.colors ? "\x1b[31m" : "";
-        const reset = inspectOptions.colors ? "\x1b[0m" : "";
+        const red = inspectOptions.colors ? `\x1b[${inspect.colors.red[0]}m` : "";
+        const reset = inspectOptions.colors ? `\x1b[${inspect.colors.reset[0]}m` : "";
         return `${red}Err${reset}(${inspect(error, inspectOptions)})`
     }
 }) as unknown as Err<T, E>;

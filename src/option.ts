@@ -151,8 +151,8 @@ export const Some = <T>(value: T) => ({
     unwrap_or_else(_) { return value; },
     toString() { return `Some(${value})`; },
     [nodeInspect](_depth, inspectOptions, inspect) {
-        const cyan = inspectOptions.colors ? "\x1b[36m" : "";
-        const reset = inspectOptions.colors ? "\x1b[0m" : "";
+        const cyan = inspectOptions.colors ? `\x1b[${inspect.colors.cyan[0]}m` : "";
+        const reset = inspectOptions.colors ? `\x1b[${inspect.colors.reset[0]}m` : "";
         return `${cyan}Some${reset}(${inspect(value, inspectOptions)})`
     }
 }) as unknown as Some<T>;
@@ -171,9 +171,9 @@ export const None = Object.freeze({
     unwrap_or(default_value) { return default_value; },
     unwrap_or_else(otherwise) { return otherwise(); },
     toString() { return "None"; },
-    [nodeInspect](_depth, inspectOptions) {
-        const yellow = inspectOptions.colors ? "\x1b[33m" : "";
-        const reset = inspectOptions.colors ? "\x1b[0m" : "";
+    [nodeInspect](_depth, inspectOptions, inspect) {
+        const yellow = inspectOptions.colors ? `\x1b[${inspect.colors.yellow[0]}m` : "";
+        const reset = inspectOptions.colors ? `\x1b[${inspect.colors.reset[0]}m` : "";
         return `${yellow}None${reset}`;
     }
 }) as unknown as None;
