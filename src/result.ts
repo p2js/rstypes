@@ -18,17 +18,21 @@ import { None, Option, Some } from "./option";
  * ```
  */
 export type Result<T, E> = Ok<T, E> | Err<T, E>;
+
 /**
  * Wrap a function that can throw, returning `Ok(fn())` if the function returns, `Err(error)` if it throws `error`.
  * @param fn function that potentially throws
  */
-export function as_result<T>(fn: () => T): Result<T, unknown> {
-    try {
-        return Ok(fn());
-    } catch (x) {
-        return Err(x);
+export function as_result<A extends any[], T>(fn: (...args: A) => T): (...args: A) => Result<T, any> {
+    return (...args) => {
+        try {
+            return Ok(fn(...args));
+        } catch (x) {
+            return Err(x);
+        }
     }
 }
+
 /**
  * Common method signatures for Result types.
  */

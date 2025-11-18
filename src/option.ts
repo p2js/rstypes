@@ -20,17 +20,23 @@ import { Err, Ok, Result } from "./result";
  * ```
  */
 export type Option<T> = Some<T> | None<T>;
+
 /**
- * Wrap a function that can throw, returning `Some(fn())` if the function returns, `None` if it throws.
- * @param fn function that potentially throws
+ * Wrap a function that can return `undefined`, `null` or `NaN`, to instead return an Option,
+ * which will be None in the above cases.
  */
-export function as_option<T>(fn: () => T): Option<T> {
-    try {
-        return Some(fn());
-    } catch (x) {
-        return None;
+export function as_option<A extends any[], T>(fn: (...args: A) => T): (...args: A) => Option<T> {
+    return (...args) => {
+        let out = fn(...args);
+        if ((typeof out === "number" && isNaN(out))
+            || out === null
+            || out === "undefined") {
+            return None;
+        }
+        return Some(out);
     }
 }
+
 /**
  * Common method signatures for Option types.
  */
