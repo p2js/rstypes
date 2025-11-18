@@ -36,8 +36,13 @@ export function as_option<T>(fn: () => T): Option<T> {
  */
 interface OptionMethods<T> {
     /**
+     * Returns `other` if the result is `Some`, or `None` otherwise.
+     * @param other Option to return if the option is `Some`
+     */
+    and<U>(other: Option<U>): Option<U>;
+    /**
      * Return the contained `Some` value. Will throw a hard error with the specified message if called on `None`.
-     * @param message custom message to throw if `None`
+     * @param message Custom message to throw if `None`
      */
     expect(message: string): T;
     /**
@@ -61,19 +66,19 @@ interface OptionMethods<T> {
     /**
      * Maps an `Option<T>` into an `Option<U>`.
      * Will return `Some(fn(value))` if the option is `Some`, or propagate `None`.
-     * @param fn function to transform the inner `value`
+     * @param fn Function to transform the inner `value`
      */
     map<U>(fn: (arg: T) => U): Option<U>;
     /**
      * Pattern-match on the option, running the `Some` or `None` function in the respective cases.
-     * @param matcher object containing a `Some(value)` and `None(error)` function to run
+     * @param matcher Object containing a `Some(value)` and `None(error)` function to run
      */
     match<R>(matcher: { Some(value: T): R, None(): R }): R;
     /**
      * Pattern-match on the option, running the former or latter function
      * in the `Some` or `None` cases respectively. 
-     * @param on_some function to run if the option is `Some`
-     * @param on_none function to run if the option is `None`
+     * @param on_some Function to run if the option is `Some`
+     * @param on_none Function to run if the option is `None`
      */
     match<R>(on_some: (value: T) => R, on_none: () => R): R;
     /**
@@ -83,19 +88,29 @@ interface OptionMethods<T> {
      */
     ok_or<E>(error: E): Result<T, E>;
     /**
+     * Returns `other` if the result is `None`, otherwise returns the first option's `Some` value.
+     * @param other Option to return if the option is `Some`
+     */
+    or(other: Option<T>): Option<T>;
+    /**
      * Return the contained `Some` value. Will throw a hard error if called on `None`. 
      */
     unwrap(): T;
     /**
      * Return the contained `Some` value, or `default_value` if called on `None`.
-     * @param default_value value to use if the option is `None`
+     * @param default_value Value to use if the option is `None`
      */
     unwrap_or(default_value: T): T;
     /**
      * Return the contained `Some` value, or the result of `otherwise` if called on `None`.
-     * @param otherwise function to run if the option is `None`
+     * @param otherwise Function to run if the option is `None`
      */
     unwrap_or_else(otherwise: () => T): T;
+    /**
+     * Returns None if either both the option and `other` are `Some` or `None`,
+     * or the single `Some(value)` otherwise.
+     */
+    xor(other: Option<T>): Option<T>;
 }
 /**
  * A present optional value.
@@ -103,11 +118,13 @@ interface OptionMethods<T> {
 export interface Some<T> extends OptionMethods<T> {
     map<U>(fn: (value: T) => U): Some<U>;
     ok_or<E>(error: E): Ok<T, E>;
+    or(other: Option<T>): Some<T>;
 }
 /**
  * No optional value.
  */
 export interface None<T = any> extends OptionMethods<T> {
+    and<U>(other: Option<U>): None<U>;
     expect(message: string): never;
     map<U>(fn: (value: T) => U): None<U>;
     ok_or<E>(error: E): Err<T, E>;
@@ -120,7 +137,8 @@ const nodeInspect = Symbol.for('nodejs.util.inspect.custom');
  * @param value Inner value
  */
 export const Some = <T>(value: T) => ({
-    expect(_) { return value },
+    and(other) { return other; },
+    expect() { return value; },
     is_some(): this is Some<T> { return true; },
     is_some_and(predicate) { return predicate(value); },
     is_none(): this is None<T> { return false; },
@@ -132,23 +150,26 @@ export const Some = <T>(value: T) => ({
         }
         return matcher_or_some(value);
     },
-    ok_or(_) { return Ok(value); },
+    ok_or() { return Ok(value); },
+    or() { return this; },
     unwrap() { return value; },
-    unwrap_or(_) { return value; },
+    unwrap_or() { return value; },
     unwrap_or_else(_) { return value; },
+    xor(other) { return other.is_none() ? this : None; },
     toString() { return `Some(${value})`; },
     [nodeInspect](_depth, inspectOptions, inspect) {
         const cyan = inspectOptions.colors ? `\x1b[${inspect.colors.cyan[0]}m` : "";
         const reset = inspectOptions.colors ? `\x1b[${inspect.colors.reset[0]}m` : "";
-        return `${cyan}Some${reset}(${inspect(value, inspectOptions)})`
+        return `${cyan}Some${reset}(${inspect(value, inspectOptions)})`;
     }
 }) as Some<T>;
 export const None = Object.freeze({
+    and() { return this; },
     expect(message) { throw Error(message); },
     is_some(): this is Some<any> { return false; },
     is_some_and() { return false; },
     is_none(): this is None<any> { return true; },
-    is_none_or() { return true },
+    is_none_or() { return true; },
     map() { return None; },
     match<R>(matcher_or_some, none?: () => R) {
         if ("None" in matcher_or_some) {
@@ -157,9 +178,11 @@ export const None = Object.freeze({
         return none();
     },
     ok_or(err) { return Err(err); },
+    or(other) { return other; },
     unwrap() { throw Error("Called unwrap on a None value"); },
     unwrap_or(default_value) { return default_value; },
     unwrap_or_else(otherwise) { return otherwise(); },
+    xor(other) { return other.is_some() ? other : None; },
     toString() { return "None"; },
     [nodeInspect](_depth, inspectOptions, inspect) {
         const yellow = inspectOptions.colors ? `\x1b[${inspect.colors.yellow[0]}m` : "";
