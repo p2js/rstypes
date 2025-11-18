@@ -39,6 +39,22 @@ result.match({
 });
 ```
 
+## Table of contents
+
+- [Usage](#usage)
+  - [Basic type information](#basic-type-information)
+  - [Handling Option and Result values](#handling-option-and-result-values)
+    - [match](#match)
+    - [unwrap, expect](#unwrap-expect)
+    - [unwrap_or, unwrap_or_else](#unwrap_or-unwrap_or_else)
+    - [is_ok, is_err](#is_ok-is_err)
+    - [is_ok_and, is_err_and](#is_ok_and-is_err_and)
+    - [map, map_err](#map-map_err)
+    - [ok, err](#ok-err)
+    - [and, or](#and-or)
+  - [Converting standard functions](#converting-standard-functions)
+- [Developer considerations](#developer-considerations)
+
 ## Usage
 
 You can install rstypes on [npm](https://npmjs.com/package/rstypes):
@@ -54,7 +70,7 @@ Use `Option<T>` to represent an optional value, for example:
 - An object that may or may not have a value in its field, but should always have that field.
 - A function that may or may not return a value.
 
-Use `Result<T, E>` to represent either a succesful return value or an error that is expected and recoverable, for example:
+Use `Result<T, E>` to represent either a successful return value or an error that is expected and recoverable, for example:
 - A parsing function that can fail with malformed input.
 - A function that can error based on external state.
 - A function that can fail in multiple ways that should be handled separately.
@@ -84,10 +100,10 @@ res.match({
     Err(error) { console.error(error); }
 })
 
-let x = res.match({
+let x = res.match(
     value => 2 * value,
     error => { console.error("There was an error"); return 0; }
-});
+);
 ```
 
 > N.B. `Option` values match on the two functions `Some(value)` and `None()` instead, where the `None` case takes no arguments.
@@ -158,7 +174,7 @@ let s: Option<number> = res.err();
 
 ### and, or
 
-These two methods can be used to perform logic on `Result` values, evaluating to the alternative given if the first result is `Some` or `None` respectively, or itself otherwise.
+These two methods can be used to perform logic on `Result` values, evaluating to the alternative given if the first result is `Ok` or `Err` respectively, or itself otherwise.
 
 ```ts
 let res2: Result<number, string> = Err("something");
@@ -167,6 +183,31 @@ let or = res2.or(res) // or == res
 let and = res2.and(res); // or == Err("something")
 ```
 > N.B. `Option` values also have an `xor` method that performs similar logic, evaluating to `None` when both options are `Some` or `None` and the only `Some(value)` otherwise.
+
+### Converting standard functions
+
+This library also offers two wrappers to convert other JavaScript functions into these patterns:
+
+- `as_result` takes a function that can throw and outputs a function that returns a `Result`, with `Ok` if it returned and `Err` if it threw.
+
+```ts
+import { as_result } from "rstypes/result";
+let parse_json = as_result(JSON.parse);
+
+let parsed: Result<any, SyntaxError> = parse_json("{}");  // parsed = {}
+let error: Result<any, SyntaxError> = parse_json("abcd"); // error = Err(SyntaxError(...))
+
+```
+
+- `as_option` takes a function that can return `NaN`, `null` or `undefined` and outputs a function that returns an `Option`, with `None` if it returned one of those values or `Some` otherwise.
+
+```ts
+import { as_option } from "rstypes/option";
+let sqrt = as_option(Math.sqrt);
+
+let y1: Option<number> = sqrt(1);  // y1 = Some(1)
+let y2: Option<number> = sqrt(-1); // y2 = None
+```
 
 ### Developer considerations
 
