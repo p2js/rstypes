@@ -149,7 +149,7 @@ const nodeInspect = Symbol.for('nodejs.util.inspect.custom');
 export const Ok = <T, E>(value: T) => ({
     and(other) { return other; },
     err() { return None; },
-    expect(_) { return value; },
+    expect() { return value; },
     is_err(): this is Err<T, E> { return false; },
     is_err_and() { return false; },
     is_ok(): this is Ok<T, E> { return true; },
@@ -165,8 +165,8 @@ export const Ok = <T, E>(value: T) => ({
     ok() { return Some(value); },
     or() { return this; },
     unwrap() { return value; },
-    unwrap_or(_) { return value; },
-    unwrap_or_else(_) { return value; },
+    unwrap_or() { return value; },
+    unwrap_or_else() { return value; },
     toString() { return `Ok(${value})`; },
     [nodeInspect](_depth, inspectOptions, inspect) {
         const green = inspectOptions.colors ? `\x1b[${inspect.colors.green[0]}m` : "";
@@ -184,7 +184,7 @@ export const Err = <T, E>(error: E) => ({
     is_err(): this is Err<T, E> { return true; },
     is_err_and(predicate) { return predicate(error); },
     is_ok(): this is Ok<T, E> { return false; },
-    is_ok_and(predicate) { return false; },
+    is_ok_and() { return false; },
     map() { return this; },
     map_err(fn) { return Err(fn(error)); },
     match<R>(matcher_or_ok, err?) {
