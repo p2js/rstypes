@@ -1,3 +1,4 @@
+import { Err, Ok } from "./result";
 /**
  * Type representing an optional value.
  * 
@@ -43,9 +44,19 @@ export type Some<T> = {
      */
     is_some(): this is Some<T>;
     /**
+     * returns `true` if the option is `Some` and the value satisfies
+     * the given predicate, `false` otherwise.
+     */
+    is_some_and(predicate: (value: T) => boolean): boolean;
+    /**
      * returns `false` if the option is `Some`, `true` if `None`.
      */
     is_none(): this is None<T>;
+    /**
+     * Returns `true` if the option is `None` or the value satisfies
+     * the given predicate, `false` otherwise 
+     */
+    is_none_or(predicate: (value: T) => boolean): boolean;
     /**
      * Maps an `Option<T>` into an `Option<U>`.
      * Will return `Some(fn(value))` if the option is `Some`, or propagate `None`.
@@ -65,6 +76,12 @@ export type Some<T> = {
      */
     match<R>(on_some: (value: T) => R, on_none: () => R): R;
     /**
+     * Transforms the Option into a Result, mapping Some(value) to Ok(value)
+     * and None to Err(error).
+     * @param error Err value to use if the option is `None`
+     */
+    ok_or<E>(error: E): Ok<T, E>;
+    /**
      * Return the contained `Some` value. Will throw a hard error if called on `None`. 
      */
     unwrap(): T;
@@ -79,10 +96,10 @@ export type Some<T> = {
      */
     unwrap_or_else(otherwise: () => T): T;
 }
-export type None<T = unknown> = {
+export type None<T = any> = {
     /**
      * Return the contained `Some` value. Will throw a hard error with the specified message if called on `None`.
-     * @param message custom message to throw if `None`.
+     * @param message custom message to throw if `None`
      */
     expect(message: string): never;
     /**
@@ -90,9 +107,19 @@ export type None<T = unknown> = {
      */
     is_some(): this is Some<T>;
     /**
+     * returns `true` if the option is `Some` and the value satisfies
+     * the given predicate, `false` otherwise.
+     */
+    is_some_and(): false;
+    /**
      * returns `false` if the option is `Some`, `true` if `None`.
      */
     is_none(): this is None<T>;
+    /**
+     * Returns `true` if the option is `None` or the value satisfies
+     * the given predicate, `false` otherwise 
+     */
+    is_none_or(): true;
     /**
      * Maps an `Option<T>` into an `Option<U>`.
      * Will return `Some(fn(value))` if the option is `Some`, or propagate `None`.
@@ -113,6 +140,12 @@ export type None<T = unknown> = {
      * @param on_none function to run if the option is `None`
      */
     match<R>(on_some: (value: T) => R, on_none: () => R): R;
+    /**
+     * Transforms the Option into a Result, mapping Some(value) to Ok(value)
+     * and None to Err(error).
+     * @param error Err value to use if the option is `None`
+     */
+    ok_or<E>(error: E): Err<T, E>;
     /**
      * Return the contained `Some` value. Will throw a hard error if called on `None`. 
      */
@@ -137,7 +170,9 @@ const nodeInspect = Symbol.for('nodejs.util.inspect.custom');
 export const Some = <T>(value: T) => ({
     expect(_) { return value },
     is_some() { return true; },
+    is_some_and(predicate) { return predicate(value); },
     is_none() { return false; },
+    is_none_or(predicate) { return predicate(value); },
     map(fn) { return Some(fn(value)) },
     match<R>(matcher_or_some) {
         if ("Some" in matcher_or_some) {
@@ -145,6 +180,7 @@ export const Some = <T>(value: T) => ({
         }
         return matcher_or_some(value);
     },
+    ok_or(_) { return Some(value); },
     unwrap() { return value; },
     unwrap_or(_) { return value; },
     unwrap_or_else(_) { return value; },
@@ -159,7 +195,9 @@ export const Some = <T>(value: T) => ({
 export const None = Object.freeze({
     expect(message) { throw Error(message); },
     is_some() { return false; },
+    is_some_and() { return false; },
     is_none() { return true; },
+    is_none_or() { return true },
     map() { return None; },
     match<R>(matcher_or_some, none: () => R) {
         if ("None" in matcher_or_some) {
@@ -167,6 +205,7 @@ export const None = Object.freeze({
         }
         return none();
     },
+    ok_orr(err) { return Err(err); },
     unwrap(_) { throw Error("Called unwrap on a None value"); },
     unwrap_or(default_value) { return default_value; },
     unwrap_or_else(otherwise) { return otherwise(); },
