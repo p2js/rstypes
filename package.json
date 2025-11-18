@@ -1,7 +1,12 @@
 {
   "name": "rstypes",
   "version": "1.0.0",
-  "description": "",
+  "description": "Type-safe implementation of Rust's Option and Result types",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/p2js/rstypes"
+  },
+  "homepage": "https://github.com/p2js/rstypes",
   "scripts": {
     "build": "tsc"
   },
@@ -15,7 +20,21 @@
       "types": "./lib/result.d.ts"
     }
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC"
+  "files": [
+    "lib",
+    "readme.md"
+  ],
+  "keywords": [
+    "type-safe",
+    "typescript",
+    "types",
+    "option",
+    "result",
+    "rust",
+    "rust-types",
+    "error-handling"
+  ],
+  "author": "Alfio (https://github.com/p2js)",
+  "license": "ISC",
+  "packageManager": "pnpm@9.14.4+sha512.c8180b3fbe4e4bca02c94234717896b5529740a6cbadf19fa78254270403ea2f27d4e1d46a08a0f56c89b63dc8ebfd3ee53326da720273794e6200fcf0d184ab"
 }

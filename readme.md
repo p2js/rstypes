@@ -41,7 +41,7 @@ result.match({
 
 ## Usage
 
-You can install rstypes on [npm](TODO):
+You can install rstypes on [npm](https://npmjs.com/package/rstypes):
 
 ```sh
 npm install rstypes
@@ -112,7 +112,7 @@ let y: number = res.unwrap_or_else(() => Math.random()); // the function can als
 
 #### is_ok, is_err
 
-These two methods return true or false when the `Result` value is the appropriate variant. They can be used for more traditional/non-exhaustive handling.
+These two methods return true or false when the `Result` value is the appropriate variant. They can be used for more traditional/non-exhaustive handling, and TypeScript will automatically narrow the type to the respective variant within their blocks.
 
 ```ts
 if(res.is_ok()) {
@@ -124,16 +124,49 @@ if(res.is_ok()) {
 ```
 > N.B. `Option` values have analogous predicates `is_some` and `is_none`.
 
+### is_ok_and, is_err_and
+
+These two methods return true when the result value is of the appropriate variant and a given predicate evaluates to `true` with the inner value, returning false otherwise. They can be used to check for a given property of contained values.
+
+```ts
+if(res.is_ok_and(n => n % 2 == 0)) {
+    let even = res.unwrap();
+    //...
+}
+```
+> N.B. `Option` values have equivalent `is_some_and` and `is_none_or`, with the latter returning true if the option is `None`, or `Some(value)` with the predicate being true for `value`.
+
 #### map, map_err
 
-These two methods can convert between `Result` values with a different `Ok` type and `Err` type respectively, propagating the alternate value otherwise. These methods can be used to perform transformations conditionally.
+These two methods can convert between `Result` values with a different `Ok` type and `Err` type respectively, propagating the alternate value otherwise. They can be used to perform transformations conditionally.
 
 ```ts
 let s: Result<string, string> = res.map((n) => `number ${n}`);
 let e: Result<number, Error> = res.map_err((e) => Error(e));
 ```
-
 > N.B. `Option` values only have `map` to translate between `Option<T>` and `Option<U>`.
+
+### ok, err
+
+These two methods convert a `Result<T,E>` into an `Option<T>` and `Option<E>` respectively, returning `Some(value)` if the variant matches the method called and `None` otherwise. They can be used to translate between the two types as needed.
+
+```ts
+let n: Option<number> = res.ok();
+let s: Option<number> = res.err();
+```
+> N.B. `Option` values have an equivalent `ok_or(error)` method to translate `Some(value)` into `Ok(value)` and `None` into `Err(error)`.
+
+### and, or
+
+These two methods can be used to perform logic on `Result` values, evaluating to the alternative given if the first result is `Some` or `None` respectively, or itself otherwise.
+
+```ts
+let res2: Result<number, string> = Err("something");
+
+let or = res2.or(res) // or == res
+let and = res2.and(res); // or == Err("something")
+```
+> N.B. `Option` values also have an `xor` method that performs similar logic, evaluating to `None` when both options are `Some` or `None` and the only `Some(value)` otherwise.
 
 ### Developer considerations
 
