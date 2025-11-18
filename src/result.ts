@@ -1,3 +1,4 @@
+import { None, Option, Some } from "./option";
 /**
  * A succesful value or an expected, recoverable error.
  * 
@@ -33,18 +34,38 @@ export function as_result<T>(fn: () => T): Result<T, unknown> {
  */
 interface ResultMethods<T, E> {
     /**
+     * Returns `other` if the result is `Ok`, otherwise returns the first result's Err value.
+     * @param other result to return if the result is `Ok`.
+     */
+    and<U>(other: Result<U, E>): Result<U, E>
+    /**
+     * Transforms `Result<T, E>` into an `Option<E>`, mapping `Ok(value)` to `None` discarding `value`
+     * and `Err(error)` to `Some(error)`.
+     */
+    err(): Option<E>;
+    /**
      * Return the contained `Ok` value. Will throw a hard error with the specified message if called on `Err`.
      * @param message custom message to throw if `None`
      */
     expect(message: string): T,
     /**
-     * returns `true` if the option is `Ok`, `false` if `Err`.
+     * returns `true` if the result is `Ok`, `false` if `Err`.
      */
     is_ok(): this is Ok<T, E>;
     /**
-     * returns `false` if the option is `Ok`, `true` if `Err`.
+     * returns `true` if the result is `Ok` and the value satisfies
+     * the given predicate, `false` otherwise.
+     */
+    is_ok_and(predicate: (value: T) => boolean): boolean;
+    /**
+     * returns `false` if the result is `Ok`, `true` if `Err`.
      */
     is_err(): this is Err<T, E>;
+    /**
+     * returns `true` if the result is `Err` and the error satisfies
+     * the given predicate, `false` otherwise.
+     */
+    is_err_and(predicate: (error: E) => boolean): boolean;
     /**
      * Maps a `Result<T, E>` into a `Result<U, E>`.
      * Will return `Ok(fn(value))` if the result is `Ok`, or propagate `Err`.
@@ -71,6 +92,16 @@ interface ResultMethods<T, E> {
      */
     match<R>(on_ok: (value: T) => R, on_err: (error: E) => R): R;
     /**
+     * Transforms the `Result<T, E>` into an `Option<T>`, mapping `Ok(value)` to `Some(value)`
+     * and `Err(error)` to `None`, discarding `error`.
+     */
+    ok(): Option<T>;
+    /**
+     * Returns `other` if the result is `Err`, otherwise returns the first result's `Ok` value.
+     * @param other result to return if the result is `Err`.
+     */
+    or<F>(other: Result<T, F>): Result<T, F>;
+    /**
      * Return the contained `Ok` value. Will throw a hard error if called on `Err`. 
      */
     unwrap(): T;
@@ -89,16 +120,24 @@ interface ResultMethods<T, E> {
  * A succesful result.
  */
 export interface Ok<T, E> extends ResultMethods<T, E> {
+    err(): None<E>,
+    is_err_and(predicate: (error: E) => boolean): false,
     map<U>(fn: (value: T) => U): Ok<U, E>;
-    map_err<F>(): Ok<T, F>;
+    map_err<F>(fn: (error: E) => F): Ok<T, F>;
+    ok(): Some<T>;
+    or<F>(other: Result<T, F>): Ok<T, F>;
 }
 /**
  * An expected, recoverable error.
  */
 export interface Err<T, E> extends ResultMethods<T, E> {
+    and<U>(other: Result<U, E>): Err<U, E>;
+    err(): Some<E>;
     expect(message: string): never;
-    map<U>(): Err<U, E>;
+    is_ok_and(predicate: (value: T) => boolean): false,
+    map<U>(fn: (value: T) => U): Err<U, E>;
     map_err<F>(fn: (error: E) => F): Err<T, F>;
+    ok(): None<T>;
     unwrap(): never;
 }
 
@@ -108,20 +147,26 @@ const nodeInspect = Symbol.for('nodejs.util.inspect.custom');
  * @param value Inner value
  */
 export const Ok = <T, E>(value: T) => ({
+    and(other) { return other; },
+    err() { return None; },
     expect(_) { return value; },
-    is_ok(): this is Ok<T, E> { return true; },
     is_err(): this is Err<T, E> { return false; },
+    is_err_and() { return false; },
+    is_ok(): this is Ok<T, E> { return true; },
+    is_ok_and(predicate) { return predicate(value); },
     map(fn) { return Ok(fn(value)); },
     map_err() { return this; },
-    unwrap() { return value; },
-    unwrap_or(_) { return value; },
-    unwrap_or_else(_) { return value; },
     match<R>(matcher_or_ok) {
         if ("Ok" in matcher_or_ok) {
             return (matcher_or_ok as { Ok: (value: T) => R }).Ok(value);
         }
         return matcher_or_ok(value);
     },
+    ok() { return Some(value); },
+    or() { return this; },
+    unwrap() { return value; },
+    unwrap_or(_) { return value; },
+    unwrap_or_else(_) { return value; },
     toString() { return `Ok(${value})`; },
     [nodeInspect](_depth, inspectOptions, inspect) {
         const green = inspectOptions.colors ? `\x1b[${inspect.colors.green[0]}m` : "";
@@ -133,20 +178,26 @@ export const Ok = <T, E>(value: T) => ({
  * @param error Inner error
  */
 export const Err = <T, E>(error: E) => ({
+    and() { return this; },
+    err() { return Some(error); },
     expect(message) { throw Error(`${message}: ${error}`) },
-    is_ok(): this is Ok<T, E> { return false; },
     is_err(): this is Err<T, E> { return true; },
+    is_err_and(predicate) { return predicate(error); },
+    is_ok(): this is Ok<T, E> { return false; },
+    is_ok_and(predicate) { return false; },
     map() { return this; },
     map_err(fn) { return Err(fn(error)); },
-    unwrap() { throw Error(`Called unwrap on an Err value: ${error}`) },
-    unwrap_or(default_value) { return default_value; },
-    unwrap_or_else(otherwise) { return otherwise(error); },
     match<R>(matcher_or_ok, err?) {
         if ("Err" in matcher_or_ok) {
             return (matcher_or_ok as { Err: (error: E) => R }).Err(error);
         }
         return err(error);
     },
+    ok() { return None; },
+    or(other) { return other; },
+    unwrap() { throw Error(`Called unwrap on an Err value: ${error}`) },
+    unwrap_or(default_value) { return default_value; },
+    unwrap_or_else(otherwise) { return otherwise(error); },
     toString() { return `Err(${error})`; },
     [nodeInspect](_depth, inspectOptions, inspect) {
         const red = inspectOptions.colors ? `\x1b[${inspect.colors.red[0]}m` : "";
