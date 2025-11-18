@@ -2,7 +2,6 @@
  * Type representing an optional value.
  * 
  * ### Example
- * 
  * ```ts
  * function divide(numerator: number, denominator: number): Option<number> {
  *     if(y === 0) {
@@ -156,6 +155,7 @@ export const Some = <T>(value: T) => ({
         return `${cyan}Some${reset}(${inspect(value, inspectOptions)})`
     }
 }) as unknown as Some<T>;
+
 export const None = Object.freeze({
     expect(message) { throw Error(message); },
     is_some() { return false; },
@@ -167,7 +167,7 @@ export const None = Object.freeze({
         }
         return none();
     },
-    unwrap(_) { throw Error("Cannot call unwrap on None"); },
+    unwrap(_) { throw Error("Called unwrap on a None value"); },
     unwrap_or(default_value) { return default_value; },
     unwrap_or_else(otherwise) { return otherwise(); },
     toString() { return "None"; },

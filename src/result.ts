@@ -2,6 +2,7 @@
  * Type used to represent either a succesful value or an expected, recoverable error.
  * 
  * ### Example
+ * ```ts
  * function parse_int(n: string): Result<number, string> {
  *     let maybe = parseInt(n);
  *     if(isNaN(maybe)) return Err("Could not parse input");
@@ -13,6 +14,7 @@
  *     Ok(value)  { console.log("Parsed number: ", value) },
  *     Err(error) { console.error("Error: ", error)}
  * });
+ * ```
  */
 export type Result<T, E> = Ok<T, E> | Err<T, E>;
 
@@ -164,12 +166,12 @@ export const Ok = <T, E>(value: T) => ({
     }
 }) as unknown as Ok<T, E>;
 export const Err = <T, E>(error: E) => ({
-    expect(message) { throw Error(message) },
+    expect(message) { throw Error(`${message}: ${error}`) },
     is_ok() { return false; },
     is_err() { return true; },
     map() { return this; },
     map_err(fn) { return Err(fn(error)); },
-    unwrap() { throw Error("Cannot call unwrap on an Err value") },
+    unwrap() { throw Error(`Called unwrap on an Err value: ${error}`) },
     unwrap_or(default_value) { return default_value; },
     unwrap_or_else(otherwise) { return otherwise(error); },
     match<R>(matcher_or_ok, err) {
