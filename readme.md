@@ -54,6 +54,7 @@ result.match({
     - [and, or](#and-or)
   - [Converting standard functions](#converting-standard-functions)
 - [Developer considerations](#developer-considerations)
+- [Why is this useful?](#why-is-this-useful)
 
 ## Usage
 
@@ -216,3 +217,5 @@ For additional type safety (such as not being able to call `unwrap` on directly 
 Therefore, for best developer experience, take care to use explicit `Result<T, E>` type annotations where possible.
 
 > N.B. Holds analogously for `Some` and `None`.
+
+## Why is this useful?
