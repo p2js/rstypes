@@ -1,221 +1,194 @@
 # RSTypes
 
-Type-safe implementation of lightweight Option and Result types in TypeScript (and JavaScript).
+Type-safe implementation of lightweight `Option` and `Result` types for TypeScript and JavaScript.
 
 ```ts
 import { Option, Some, None } from "rstypes/option";
 
-function index_in_array<T>(array: T[], search: T): Option<number> {
-    let index = array.indexOf(search);
-
-    if(index == -1) {
-        return None;
-    } else {
-        return Some(index);
-    }
+function findIndex<T>(array: T[], search: T): Option<number> {
+    const index = array.indexOf(search);
+    return index === -1 ? None : Some(index);
 }
 
-let idx = index_in_array([1, 2, 3], 2);
+const idx = findIndex([1, 2, 3], 2);
 
 idx.match({
-    Some(value) { console.log("Found at index: ", value) },
-    None() { console.log("Could not find in array") }
-})
-```
-```ts
-import { Result, Ok, Err } from "rstypes/result";      // ESM
-const { Result, Ok, Err } = require("rstypes/result"); // CommonJS 
-
-function parse_int(str: string): Result<number, string> {
-    let maybe_number = parseInt(str);
-    if(isNaN(maybe_number)) return Err("Invalid string");
-    return Ok(maybe_number);
-}
-
-let result = parse_int("333");
-result.match({
-    Ok(num) { console.log("Parsed number: ", num) },
-    Err(msg) { console.log("Error parsing: ", msg) }
+    Some(value) { console.log("Found at index:", value) },
+    None() { console.log("Not found") }
 });
 ```
 
-## Table of contents
+```ts
+import { Result, Ok, Err } from "rstypes/result";
 
-- [Usage](#usage)
-  - [Basic type information](#basic-type-information)
-  - [Handling Option and Result values](#handling-option-and-result-values)
-    - [match](#match)
-    - [unwrap, expect](#unwrap-expect)
-    - [unwrap_or, unwrap_or_else](#unwrap_or-unwrap_or_else)
-    - [is_ok, is_err](#is_ok-is_err)
-    - [is_ok_and, is_err_and](#is_ok_and-is_err_and)
-    - [map, map_err](#map-map_err)
-    - [ok, err](#ok-err)
-    - [and, or](#and-or)
-  - [Converting standard functions](#converting-standard-functions)
-- [Developer considerations](#developer-considerations)
+function parseIntSafe(str: string): Result<number, string> {
+    const num = parseInt(str);
+    return isNaN(num) ? Err("Invalid string") : Ok(num);
+}
+
+const result = parseIntSafe("333");
+result.match({
+    Ok(num) { console.log("Parsed:", num) },
+    Err(msg) { console.error("Error:", msg) }
+});
+```
+
+## Table of Contents
+
 - [Why is this useful?](#why-is-this-useful)
+- [Usage](#usage)
+  - [Basic Types](#basic-types)
+  - [Handling Values](#handling-values)
+  - [Utilities](#utilities)
+
+## Why is this useful?
+
+`rstypes` can help you build clearer APIs for your libraries and code that allow for more explicit handling and type checking.
+
+* No more hidden `null`/`undefined`. `Option` provides a structured way to handle missing values rather than just finding an `undefined` where you expected a string.
+
+* Explicit error handling. Unlike exceptions, which can be ignored or go unnoticed, `Result` forces you to acknowledge and handle error cases at the type level. The type also explicitly encodes what errors the function will return, making APIs clear.
+
+* Extra type safety. TypeScript ensures that you've handled both success and failure branches when using `match`, and supports type narrowing on different cases, providing compile-time guarantees for your logic.
+
+* Fast, declarative operations. Transformations can be chained with `map`, `or` etc. which will automatically propagate the alternate cases. This keeps logic flat and readable and avoids a branching check for performance (the correct cases get called directly by each value object).
 
 ## Usage
-
-You can install rstypes on [npm](https://npmjs.com/package/rstypes):
 
 ```sh
 npm install rstypes
 ```
 
-### Basic type information
+### Basic Types
 
-Use `Option<T>` to represent an optional value, for example:
-- An explicit optional parameter in a function.
-- An object that may or may not have a value in its field, but should always have that field.
-- A function that may or may not return a value.
+`Option<T>` Represents an optional value (which may be `Some(value: T)` or `None`). Use it where `null` or `undefined` would go: explicit optional parameters, nullable fields, or functions that might not return a result.
 
-Use `Result<T, E>` to represent either a successful return value or an error that is expected and recoverable, for example:
-- A parsing function that can fail with malformed input.
-- A function that can error based on external state.
-- A function that can fail in multiple ways that should be handled separately.
+`Result<T, E>` Represents a success (`Ok(value: T)`) or a recoverable error (`Err(error: E)`). Use it for operations that can fail, like parsing or network requests.
 
+> Note: When making functions that return these values, take care to explicitly annotate return types as `Option<T>` or `Result<T, E>` to maximise clarity in your API. Typescript will by default infer the values as `Some<T> | None` and `Ok<T> | Err<E>`, which are equivalent in function but will have messier definitions for some methods.
 
-These types give you a type-safe alternative to returning `null` or `undefined` and throwing exceptions, in ways that can be handled more explicitly and are immediately clear from the function signature.
+### Handling Values
 
-### Handling Option and Result values
-
-`Option` and `Result` values can be handled almost identically (The examples below will focus on `Result` but will clarify differences with handling `Option`s).
-
-Consider an example `Result` variable:
+In the below examples, consider example `Option` and `Result` variables
 
 ```ts
+let opt: Option<number> = /* ... */
 let res: Result<number, string> = /* ... */
 ```
 
-Where `number` is the `Ok` type and `string` is the `Err` type.
+Where `number` is the `Ok`/`Some` type and `string` is the `Err` type of the result.
 
 #### match
-
-Matching on values is exhaustive, and can be done using a more verbose Rust-like syntax using an object, or simply two arrow functions for conciseness. This is considered the default way to handle values for its expressiveness and flexibility. 
+Exhaustive pattern matching. Supports both verbose object syntax and concise functional syntax.
 
 ```ts
-res.match({
-    Ok(value) {  /* do something with value */ },
-    Err(error) { console.error(error); }
+// Object syntax
+const val opt.match({
+    Some(value) { return value; }
+    None() { return 0; }
 })
 
-let x = res.match(
-    value => 2 * value,
-    error => { console.error("There was an error"); return 0; }
+res.match({
+    Ok(value) { console.log(value) },
+    Err(error) { console.error(error) }
+});
+
+// Functional syntax
+opt.match(
+    value => console.log(value),
+    () => console.error("There was no value")
+);
+
+const val2 = res.match(
+    value => value * 2,
+    error => 0
 );
 ```
 
-> N.B. `Option` values match on the two functions `Some(value)` and `None()` instead, where the `None` case takes no arguments.
-
-#### unwrap, expect
-
-These two methods should **only** be used when you are sure that the value cannot be `Err`/`None` and just want immediate access to the inner value (ie. when the error case would violate a fundamental assumption of the program). These functions will hard error if called on `Err`/`None`, with `unwrap` throwing a generic error and `expect` throwing an error with the specified message:
+#### unwrap & expect
+Use only when an inner value certainly exists. Throws an error if called on `None` or `Err`. `expect` allows a custom message.
 
 ```ts
-let x: number = res.unwrap();
-let y: number = res.expect("Should never error with the given inputs");
+const val = opt.unwrap();
+const val2 = res.expect("Data should be present");
 ```
 
-#### unwrap_or, unwrap_or_else
+the `Result` type has additional methods `unwrap_err` and `expect_err` for the error case.
 
-These two methods should be used when you don't care to handle the error case and want suitable default behaviour instead. 
+#### unwrap_or & unwrap_or_else
+Provide defaults when a value is missing or an error occurs. `unwrap_or` takes a value, `unwrap_or_else` takes a function.
 
 ```ts
-let x: number = res.unwrap_or(0);
-let y: number = res.unwrap_or_else(() => Math.random()); // the function can also depend on the error value!
+const val = opt.unwrap_or(0);
+const val2 = res.unwrap_or_else((err) => computeFallback(err));
 ```
 
-#### is_ok, is_err
+#### Predicates
+Check the variant and narrow types.
 
-These two methods return true or false when the `Result` value is the appropriate variant. They can be used for more traditional/non-exhaustive handling, and TypeScript will automatically narrow the type to the respective variant within their blocks.
+- `is_ok()` / `is_err()` (Result)
+- `is_some()` / `is_none()` (Option)
 
 ```ts
-if(res.is_ok()) {
-    let x = res.unwrap(); // Guaranteed not to fail
-    // ...
-} else {
-    console.log("There was some error");
+if(res.is_err()) {
+    // res gets narrowed to Err<string>, so calling unwrap() returns never!
 }
 ```
-> N.B. `Option` values have analogous predicates `is_some` and `is_none`.
 
-### is_ok_and, is_err_and
+Additional predicates can be used to verify a condition on the value, or evaluating to `false` on the wrong case.
 
-These two methods return true when the result value is of the appropriate variant and a given predicate evaluates to `true` with the inner value, returning false otherwise. They can be used to check for a given property of contained values.
-
-```ts
-if(res.is_ok_and(n => n % 2 == 0)) {
-    let even = res.unwrap();
-    //...
-}
-```
-> N.B. `Option` values have equivalent `is_some_and` and `is_none_or`, with the latter returning true if the option is `None`, or `Some(value)` with the predicate being true for `value`.
-
-#### map, map_err
-
-These two methods can convert between `Result` values with a different `Ok` type and `Err` type respectively, propagating the alternate value otherwise. They can be used to perform transformations conditionally.
+- `is_some_and(predicate)` / `is_none_or(predicate)` (Option)
+- `is_ok_and(predicate)` / `is_err_and(predicate)` (Result)
 
 ```ts
-let s: Result<string, string> = res.map((n) => `number ${n}`);
-let e: Result<number, Error> = res.map_err((e) => Error(e));
+const greater_than_3 = opt.is_some_and(x => x > 3); // false if Some(x <= 3) or None
 ```
-> N.B. `Option` values only have `map` to translate between `Option<T>` and `Option<U>`.
 
-### ok, err
-
-These two methods convert a `Result<T,E>` into an `Option<T>` and `Option<E>` respectively, returning `Some(value)` if the variant matches the method called and `None` otherwise. They can be used to translate between the two types as needed.
+#### Mapping
+Transform inner values while propagating `None` or `Err`.
 
 ```ts
-let n: Option<number> = res.ok();
-let s: Option<number> = res.err();
+const doubled = opt.map(n => n * 2);               // Option<number>
+const wrappedErr = res.map_err(e => new Error(e)); // Result<number, Error>
 ```
-> N.B. `Option` values have an equivalent `ok_or(error)` method to translate `Some(value)` into `Ok(value)` and `None` into `Err(error)`.
 
-### and, or
+the `Result` type has the additional method `map_err` for the error case.
 
-These two methods can be used to perform logic on `Result` values, evaluating to the alternative given if the first result is `Ok` or `Err` respectively, or itself otherwise.
+#### Conversion
+Move between `Option` and `Result`.
 
-```ts
-let res2: Result<number, string> = Err("something");
+- `res.ok()` converts `Result<T, E>` to `Option<T>`.
+- `res.err()` converts `Result<T, E>` to `Option<E>`.
+- `opt.ok_or(err: E)` converts `Option<T>` to `Result<T, E>`.
 
-let or = res2.or(res) // or == res
-let and = res2.and(res); // or == Err("something")
-```
-> N.B. `Option` values also have an `xor` method that performs similar logic, evaluating to `None` when both options are `Some` or `None` and the only `Some(value)` otherwise.
+#### and, or, xor
+Perform logical operations on the values.
 
-### Converting standard functions
+- `res1.and(res2)` / `opt1.and(opt2)`: Evaluate to the alternative on the success case, or the first on the error case.
+- `res1.or(res2)` / `opt1.or(opt2)`: Evaluate to the first on the success case, and the alternative on the error case.
+- `opt1.xor(opt2)`: Evaluate to `None` if both or neither are `None`, and the only `Some` otherwise.
 
-This library also offers two wrappers to convert other JavaScript functions into these patterns:
+### Utilities
 
-- `as_result` takes a function that can throw and outputs a function that returns a `Result`, with `Ok` if it returned and `Err` if it threw.
+Convert standard JS functions to return `Option` or `Result`:
+
+- `as_result` Wraps a throwing function.
+- `as_option` Wraps a function returning falsy values (like `null`, `undefined` or `NaN`).
 
 ```ts
 import { as_result } from "rstypes/result";
-let parse_json = as_result(JSON.parse);
+const safeParse = as_result(JSON.parse);
 
-let parsed: Result<any, SyntaxError> = parse_json("{}");  // parsed = {}
-let error: Result<any, SyntaxError> = parse_json("abcd"); // error = Err(SyntaxError(...))
-
+import { as_option } from "rstypes/option";
+const safeSqrt = as_option(Math.sqrt);
 ```
 
-- `as_option` takes a function that can return `NaN`, `null` or `undefined` and outputs a function that returns an `Option`, with `None` if it returned one of those values or `Some` otherwise.
+calls to `as_option` may also specify an additional predicate for when the returned value should be `None`, rather than on all falsy values.
 
 ```ts
-import { as_option } from "rstypes/option";
-let sqrt = as_option(Math.sqrt);
-
-let y1: Option<number> = sqrt(1);  // y1 = Some(1)
-let y2: Option<number> = sqrt(-1); // y2 = None
+// Concise implementation of index_in_array supplying a none predicate
+const index_in_array = as_option(
+    (array, search) => array.indexOf(search), 
+    value => value === -1
+);
 ```
-
-### Developer considerations
-
-For additional type safety (such as not being able to call `unwrap` on directly instantiated `Err` values), the outputs of `Ok(x: T)` and `Err(e: E)` are not considered to be values of `Result<T, E>` but rather of their own individual types: `Ok<T, unknown>` and `Err<unknown, E>`. This is also due to the impossibility of inferring a `T` type from a construction of `Err<unknown, E>` and vice versa, resulting in confusing type signatures when returning both from functions.
-
-Therefore, for best developer experience, take care to use explicit `Result<T, E>` type annotations where possible.
-
-> N.B. Holds analogously for `Some` and `None`.
-
-## Why is this useful?

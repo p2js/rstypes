@@ -1,6 +1,6 @@
 {
   "name": "rstypes",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Type-safe implementation of Rust's Option and Result types",
   "repository": {
     "type": "git",
