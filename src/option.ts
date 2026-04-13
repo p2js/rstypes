@@ -19,27 +19,7 @@ import { Err, Ok, Result } from "./result";
  * })
  * ```
  */
-export type Option<T> = Some<T> | None;
-
-/**
- * Wrap a function that can return a falsy value (such as  `undefined`, `null` or `NaN`) to instead return an `Option` value,
- * which will be `None` in the above cases.
- */
-export function as_option<A extends any[], T>(fn: (...args: A) => T): (...args: A) => Option<T> {
-    return (...args) => {
-        let out = fn(...args);
-        if (out) {
-            return Some(out);
-        } else {
-            return None;
-        }
-    }
-}
-
-/**
- * Common method signatures for Option types.
- */
-interface OptionMethods<T> {
+export interface Option<T> {
     /**
      * Returns `other` if the result is `Some`, or `None` otherwise.
      * @param other Option to return if the option is `Some`
@@ -117,33 +97,48 @@ interface OptionMethods<T> {
      */
     xor(other: Option<T>): Option<T>;
 }
+
 /**
  * A present optional value.
  */
-export interface Some<T> extends OptionMethods<T> {
+export interface Some<T> extends Option<T> {
     map<U>(fn: (value: T) => U): Some<U>;
-    ok_or<E>(error: E): Ok<T, never>;
+    ok_or<E>(error: E): Ok<T>;
     or(other: Option<T>): Some<T>;
 }
 
 /**
  * No optional value.
  */
-export interface None extends OptionMethods<never> {
+export interface None extends Option<never> {
     and<U>(other: Option<U>): None;
     is_some<T>(): this is Some<T>;
     is_some_and(predicate: any): false;
     is_none_or(predicate: any): true;
     map<T, U>(fn: (value: T) => U): None;
-    match<R>(...args: [{ Some(arg: never): R, None(): R }] | [(arg: never) => R, (arg?: never) => R]): R;
-    ok_or<E>(error: E): Err<never, E>;
-    or<T>(other: Option<T>): None;
+    ok_or<E>(error: E): Err<E>;
+    or<T>(other: Option<T>): Option<T>;
     unwrap_or<T>(default_value: T): T;
     unwrap_or_else<T>(otherwise: () => T): T;
     xor<T>(other: Option<T>): Option<T>;
 }
 
-// Implementations
+/**
+ * Wrap a function that can return a falsy value (such as  `undefined`, `null` or `NaN`) to instead return an `Option` value,
+ * which will be `None` in the above cases.
+ */
+export function as_option<A extends any[], T>(fn: (...args: A) => T): (...args: A) => Option<T> {
+    return (...args) => {
+        let out = fn(...args);
+        if (out) {
+            return Some(out);
+        } else {
+            return None;
+        }
+    }
+}
+
+// Type implementations
 const nodeInspect = Symbol.for('nodejs.util.inspect.custom');
 /**
  * @param value Inner value
@@ -184,13 +179,13 @@ export const None = Object.freeze({
     is_none(): this is None { return true; },
     is_none_or() { return true; },
     map() { return None; },
-    match<R>(matcher_or_some?: { None: () => R } | ((value: any) => R), none?: (arg?: never) => R) {
+    match<T, R>(matcher_or_some?: { None: () => R } | ((value: T) => R), none?: (arg?: never) => R) {
         if ("None" in matcher_or_some!) {
             return (matcher_or_some as { None: () => R; }).None();
         }
         return none!();
     },
-    ok_or<E>(err: E) { return Err(err) as Err<never, E>; },
+    ok_or<E>(err: E) { return Err(err) as Err<E>; },
     or<T>(other: Option<T>) { return other; },
     unwrap() { throw Error("Called unwrap on a None value"); },
     unwrap_or<T>(default_value: T) { return default_value; },
