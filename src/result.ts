@@ -130,9 +130,9 @@ export interface Err<E> extends Result<never, E> {
     is_ok_and<T>(predicate: (value: T) => boolean): false;
     map<T, U>(fn: (value: T) => U): Err<E>;
     map_err<F>(fn: (error: E) => F): Err<F>;
+    match<R>(...args: [{ Ok(value: never): R, Err(error: E): R }] | [(value: never) => R, (error: E) => R]): R;
     ok(): None;
 }
-
 /**
  * Wrap a function that can throw, returning `Ok(fn())` if the function returns, `Err(error)` if it throws `error`.
  * @param fn function that potentially throws

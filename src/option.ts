@@ -97,7 +97,6 @@ export interface Option<T> {
      */
     xor(other: Option<T>): Option<T>;
 }
-
 /**
  * A present optional value.
  */
@@ -106,7 +105,6 @@ export interface Some<T> extends Option<T> {
     ok_or<E>(error: E): Ok<T>;
     or(other: Option<T>): Some<T>;
 }
-
 /**
  * No optional value.
  */
@@ -116,13 +114,13 @@ export interface None extends Option<never> {
     is_some_and<T>(predicate: (value: T) => boolean): false;
     is_none_or<T>(predicate: (value: T) => boolean): true;
     map<T, U>(fn: (value: T) => U): None;
+    match<R>(...args: [{ Some(arg: never): R, None(): R }] | [(arg: never) => R, (arg?: never) => R]): R;
     ok_or<E>(error: E): Err<E>;
     or<T>(other: Option<T>): Option<T>;
     unwrap_or<T>(default_value: T): T;
     unwrap_or_else<T>(otherwise: () => T): T;
     xor<T>(other: Option<T>): Option<T>;
 }
-
 /**
  * Wrap a function to instead return an `Option` value,
  * which will be `None` when the predicate is satisfied on the return value
@@ -144,7 +142,6 @@ export function as_option<A extends any[], T>(fn: (...args: A) => T,
         }
     }
 }
-
 // Type implementations
 const nodeInspect = Symbol.for('nodejs.util.inspect.custom');
 /**
