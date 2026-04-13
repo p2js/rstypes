@@ -19,7 +19,7 @@ import { Err, Ok, Result } from "./result";
  * })
  * ```
  */
-export type Option<T> = Some<T> | None<T>;
+export type Option<T> = Some<T> | None;
 
 /**
  * Wrap a function that can return a falsy value (such as  `undefined`, `null` or `NaN`) to instead return an `Option` value,
@@ -62,7 +62,7 @@ interface OptionMethods<T> {
     /**
      * returns `false` if the option is `Some`, `true` if `None`.
      */
-    is_none(): this is None<T>;
+    is_none(): this is None;
     /**
      * Returns `true` if the option is `None` or the value satisfies
      * the given predicate, `false` otherwise 
@@ -85,7 +85,7 @@ interface OptionMethods<T> {
      * @param on_some Function to run if the option is `Some`
      * @param on_none Function to run if the option is `None`
      */
-    match<R>(on_some: (value: T) => R, on_none: () => R): R;
+    match<R>(on_some: (value: T) => R, on_none: (none?: never) => R): R;
     /**
      * Transforms the Option into a Result, mapping Some(value) to Ok(value)
      * and None to Err(error).
@@ -122,18 +122,25 @@ interface OptionMethods<T> {
  */
 export interface Some<T> extends OptionMethods<T> {
     map<U>(fn: (value: T) => U): Some<U>;
-    ok_or<E>(error: E): Ok<T, E>;
+    ok_or<E>(error: E): Ok<T, never>;
     or(other: Option<T>): Some<T>;
 }
+
 /**
  * No optional value.
  */
-export interface None<T = any> extends OptionMethods<T> {
-    and<U>(other: Option<U>): None<U>;
-    expect(message: string): never;
-    map<U>(fn: (value: T) => U): None<U>;
-    ok_or<E>(error: E): Err<T, E>;
-    unwrap(): never;
+export interface None extends OptionMethods<never> {
+    and<U>(other: Option<U>): None;
+    is_some<T>(): this is Some<T>;
+    is_some_and(predicate: any): false;
+    is_none_or(predicate: any): true;
+    map<T, U>(fn: (value: T) => U): None;
+    match<R>(matcher: { Some(arg: never): R, None(): R } | ((arg: never) => R), on_none?: (arg?: never) => R): R;
+    ok_or<E>(error: E): Err<never, E>;
+    or<T>(other: Option<T>): None;
+    unwrap_or<T>(default_value: T): T;
+    unwrap_or_else<T>(otherwise: () => T): T;
+    xor<T>(other: Option<T>): Option<T>;
 }
 
 // Implementations
@@ -146,7 +153,7 @@ export const Some = <T>(value: T) => ({
     expect() { return value; },
     is_some(): this is Some<T> { return true; },
     is_some_and(predicate) { return predicate(value); },
-    is_none(): this is None<T> { return false; },
+    is_none(): this is None { return false; },
     is_none_or(predicate) { return predicate(value); },
     map(fn) { return Some(fn(value)) },
     match<R>(matcher_or_some: { Some: (value: T) => R } | ((value: T) => R)) {
@@ -170,20 +177,20 @@ export const Some = <T>(value: T) => ({
 }) as Some<T>;
 
 export const None = Object.freeze({
-    and() { return this; },
+    and(): None { return None; },
     expect(message: string) { throw Error(message); },
     is_some<T>(): this is Some<T> { return false; },
     is_some_and() { return false; },
     is_none(): this is None { return true; },
     is_none_or() { return true; },
     map() { return None; },
-    match<R>(matcher_or_some: { None: () => R } | ((value: any) => R), none?: () => R) {
-        if ("None" in matcher_or_some) {
+    match<R>(matcher_or_some?: { None: () => R } | ((value: any) => R), none?: (arg: never) => R) {
+        if ("None" in matcher_or_some!) {
             return (matcher_or_some as { None: () => R; }).None();
         }
-        return none!();
+        return (none as any)();
     },
-    ok_or<E>(err: E) { return Err(err); },
+    ok_or<E>(err: E) { return Err(err) as Err<never, E>; },
     or<T>(other: Option<T>) { return other; },
     unwrap() { throw Error("Called unwrap on a None value"); },
     unwrap_or<T>(default_value: T) { return default_value; },

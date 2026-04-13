@@ -124,7 +124,7 @@ interface ResultMethods<T, E> {
  * A succesful result.
  */
 export interface Ok<T, E> extends ResultMethods<T, E> {
-    err(): None<E>,
+    err(): None,
     is_err_and(predicate: (error: E) => boolean): false,
     map<U>(fn: (value: T) => U): Ok<U, E>;
     map_err<F>(fn: (error: E) => F): Ok<T, F>;
@@ -141,7 +141,7 @@ export interface Err<T, E> extends ResultMethods<T, E> {
     is_ok_and(predicate: (value: T) => boolean): false,
     map<U>(fn: (value: T) => U): Err<U, E>;
     map_err<F>(fn: (error: E) => F): Err<T, F>;
-    ok(): None<T>;
+    ok(): None;
     unwrap(): never;
 }
 
