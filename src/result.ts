@@ -137,7 +137,7 @@ export interface Err<E> extends Result<never, E> {
  * Wrap a function that can throw, returning `Ok(fn())` if the function returns, `Err(error)` if it throws `error`.
  * @param fn function that potentially throws
  */
-export function as_result<A extends any[], T>(fn: (...args: A) => T): (...args: A) => Result<T, any> {
+export function as_result<A extends any[], T>(fn: (...args: A) => T): (...args: A) => Result<T, unknown> {
     return (...args) => {
         try {
             return Ok(fn(...args));

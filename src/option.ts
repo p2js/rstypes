@@ -113,8 +113,8 @@ export interface Some<T> extends Option<T> {
 export interface None extends Option<never> {
     and<U>(other: Option<U>): None;
     is_some<T>(): this is Some<T>;
-    is_some_and(predicate: any): false;
-    is_none_or(predicate: any): true;
+    is_some_and<T>(predicate: (value: T) => boolean): false;
+    is_none_or<T>(predicate: (value: T) => boolean): true;
     map<T, U>(fn: (value: T) => U): None;
     ok_or<E>(error: E): Err<E>;
     or<T>(other: Option<T>): Option<T>;
@@ -124,16 +124,23 @@ export interface None extends Option<never> {
 }
 
 /**
- * Wrap a function that can return a falsy value (such as  `undefined`, `null` or `NaN`) to instead return an `Option` value,
- * which will be `None` in the above cases.
+ * Wrap a function to instead return an `Option` value,
+ * which will be `None` when the predicate is satisfied on the return value
+ * (by default: if the value is falsy, eg. `NaN`, `null`, `undefined`, `""`).
+ * 
+ * @param fn function to wrap
+ * @param [none_predicate=(x) => !x] predicate to indicate when to return `None`
  */
-export function as_option<A extends any[], T>(fn: (...args: A) => T): (...args: A) => Option<T> {
+export function as_option<A extends any[], T>(fn: (...args: A) => T,
+    none_predicate: (value: T) => boolean = (x) => !x):
+    (...args: A) => Option<T> {
     return (...args) => {
         let out = fn(...args);
-        if (out) {
-            return Some(out);
-        } else {
+
+        if (none_predicate(out)) {
             return None;
+        } else {
+            return Some(out);
         }
     }
 }
