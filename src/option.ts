@@ -22,18 +22,17 @@ import { Err, Ok, Result } from "./result";
 export type Option<T> = Some<T> | None<T>;
 
 /**
- * Wrap a function that can return `undefined`, `null` or `NaN`, to instead return an Option,
- * which will be None in the above cases.
+ * Wrap a function that can return a falsy value (such as  `undefined`, `null` or `NaN`) to instead return an `Option` value,
+ * which will be `None` in the above cases.
  */
 export function as_option<A extends any[], T>(fn: (...args: A) => T): (...args: A) => Option<T> {
     return (...args) => {
         let out = fn(...args);
-        if ((typeof out === "number" && isNaN(out))
-            || out === null
-            || out === "undefined") {
+        if (out) {
+            return Some(out);
+        } else {
             return None;
         }
-        return Some(out);
     }
 }
 
@@ -150,7 +149,7 @@ export const Some = <T>(value: T) => ({
     is_none(): this is None<T> { return false; },
     is_none_or(predicate) { return predicate(value); },
     map(fn) { return Some(fn(value)) },
-    match<R>(matcher_or_some) {
+    match<R>(matcher_or_some: { Some: (value: T) => R } | ((value: T) => R)) {
         if ("Some" in matcher_or_some) {
             return (matcher_or_some as { Some: (value: T) => R }).Some(value);
         }
@@ -163,34 +162,35 @@ export const Some = <T>(value: T) => ({
     unwrap_or_else(_) { return value; },
     xor(other) { return other.is_none() ? this : None; },
     toString() { return `Some(${value})`; },
-    [nodeInspect](_depth, inspectOptions, inspect) {
+    [nodeInspect](_depth: any, inspectOptions: any, inspect: any) {
         const cyan = inspectOptions.colors ? `\x1b[${inspect.colors.cyan[0]}m` : "";
         const reset = inspectOptions.colors ? `\x1b[${inspect.colors.reset[0]}m` : "";
         return `${cyan}Some${reset}(${inspect(value, inspectOptions)})`;
     }
 }) as Some<T>;
+
 export const None = Object.freeze({
     and() { return this; },
-    expect(message) { throw Error(message); },
-    is_some(): this is Some<any> { return false; },
+    expect(message: string) { throw Error(message); },
+    is_some<T>(): this is Some<T> { return false; },
     is_some_and() { return false; },
-    is_none(): this is None<any> { return true; },
+    is_none(): this is None { return true; },
     is_none_or() { return true; },
     map() { return None; },
-    match<R>(matcher_or_some, none?: () => R) {
+    match<R>(matcher_or_some: { None: () => R } | ((value: any) => R), none?: () => R) {
         if ("None" in matcher_or_some) {
             return (matcher_or_some as { None: () => R; }).None();
         }
-        return none();
+        return none!();
     },
-    ok_or(err) { return Err(err); },
-    or(other) { return other; },
+    ok_or<E>(err: E) { return Err(err); },
+    or<T>(other: Option<T>) { return other; },
     unwrap() { throw Error("Called unwrap on a None value"); },
-    unwrap_or(default_value) { return default_value; },
-    unwrap_or_else(otherwise) { return otherwise(); },
-    xor(other) { return other.is_some() ? other : None; },
+    unwrap_or<T>(default_value: T) { return default_value; },
+    unwrap_or_else<T>(otherwise: () => T) { return otherwise(); },
+    xor<T>(other: Option<T>) { return other.is_some() ? other : None; },
     toString() { return "None"; },
-    [nodeInspect](_depth, inspectOptions, inspect) {
+    [nodeInspect](_depth: any, inspectOptions: any, inspect: any) {
         const yellow = inspectOptions.colors ? `\x1b[${inspect.colors.yellow[0]}m` : "";
         const reset = inspectOptions.colors ? `\x1b[${inspect.colors.reset[0]}m` : "";
         return `${yellow}None${reset}`;

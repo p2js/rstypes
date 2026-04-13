@@ -160,7 +160,7 @@ export const Ok = <T, E>(value: T) => ({
     is_ok_and(predicate) { return predicate(value); },
     map(fn) { return Ok(fn(value)); },
     map_err() { return this; },
-    match<R>(matcher_or_ok) {
+    match<R>(matcher_or_ok: { Ok: (value: T) => R } | ((value: T) => R)) {
         if ("Ok" in matcher_or_ok) {
             return (matcher_or_ok as { Ok: (value: T) => R }).Ok(value);
         }
@@ -172,7 +172,7 @@ export const Ok = <T, E>(value: T) => ({
     unwrap_or() { return value; },
     unwrap_or_else() { return value; },
     toString() { return `Ok(${value})`; },
-    [nodeInspect](_depth, inspectOptions, inspect) {
+    [nodeInspect](_depth: any, inspectOptions: any, inspect: any) {
         const green = inspectOptions.colors ? `\x1b[${inspect.colors.green[0]}m` : "";
         const reset = inspectOptions.colors ? `\x1b[${inspect.colors.reset[0]}m` : "";
         return `${green}Ok${reset}(${inspect(value, inspectOptions)})`
@@ -191,11 +191,11 @@ export const Err = <T, E>(error: E) => ({
     is_ok_and() { return false; },
     map() { return this; },
     map_err(fn) { return Err(fn(error)); },
-    match<R>(matcher_or_ok, err?) {
+    match<R>(matcher_or_ok: { Err: (error: E) => R } | ((value: T) => R), err?: (error: E) => R) {
         if ("Err" in matcher_or_ok) {
             return (matcher_or_ok as { Err: (error: E) => R }).Err(error);
         }
-        return err(error);
+        return err!(error);
     },
     ok() { return None; },
     or(other) { return other; },
@@ -203,7 +203,7 @@ export const Err = <T, E>(error: E) => ({
     unwrap_or(default_value) { return default_value; },
     unwrap_or_else(otherwise) { return otherwise(error); },
     toString() { return `Err(${error})`; },
-    [nodeInspect](_depth, inspectOptions, inspect) {
+    [nodeInspect](_depth: any, inspectOptions: any, inspect: any) {
         const red = inspectOptions.colors ? `\x1b[${inspect.colors.red[0]}m` : "";
         const reset = inspectOptions.colors ? `\x1b[${inspect.colors.reset[0]}m` : "";
         return `${red}Err${reset}(${inspect(error, inspectOptions)})`
