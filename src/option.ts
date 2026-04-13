@@ -135,7 +135,7 @@ export interface None extends OptionMethods<never> {
     is_some_and(predicate: any): false;
     is_none_or(predicate: any): true;
     map<T, U>(fn: (value: T) => U): None;
-    match<R>(matcher: { Some(arg: never): R, None(): R } | ((arg: never) => R), on_none?: (arg?: never) => R): R;
+    match<R>(...args: [{ Some(arg: never): R, None(): R }] | [(arg: never) => R, (arg?: never) => R]): R;
     ok_or<E>(error: E): Err<never, E>;
     or<T>(other: Option<T>): None;
     unwrap_or<T>(default_value: T): T;
@@ -184,11 +184,11 @@ export const None = Object.freeze({
     is_none(): this is None { return true; },
     is_none_or() { return true; },
     map() { return None; },
-    match<R>(matcher_or_some?: { None: () => R } | ((value: any) => R), none?: (arg: never) => R) {
+    match<R>(matcher_or_some?: { None: () => R } | ((value: any) => R), none?: (arg?: never) => R) {
         if ("None" in matcher_or_some!) {
             return (matcher_or_some as { None: () => R; }).None();
         }
-        return (none as any)();
+        return none!();
     },
     ok_or<E>(err: E) { return Err(err) as Err<never, E>; },
     or<T>(other: Option<T>) { return other; },
