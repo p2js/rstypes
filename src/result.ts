@@ -196,7 +196,7 @@ export const Err = <E>(error: E) => ({
     is_ok_and() { return false; },
     map() { return this; },
     map_err(fn) { return Err(fn(error)); },
-    match<T, R>(matcher_or_ok: { Err: (error: E) => R } | ((value: T) => R), err?: (error: E) => R) {
+    match<R>(matcher_or_ok: { Err: (error: E) => R } | ((value: never) => R), err?: (error: E) => R) {
         if ("Err" in matcher_or_ok) {
             return (matcher_or_ok as { Err: (error: E) => R }).Err(error);
         }

@@ -174,16 +174,15 @@ export const Some = <T>(value: T) => ({
         return `${cyan}Some${reset}(${inspect(value, inspectOptions)})`;
     }
 }) as Some<T>;
-
 export const None = Object.freeze({
-    and(): None { return None; },
+    and() { return None; },
     expect(message: string) { throw Error(message); },
     is_some<T>(): this is Some<T> { return false; },
     is_some_and() { return false; },
     is_none(): this is None { return true; },
     is_none_or() { return true; },
     map() { return None; },
-    match<T, R>(matcher_or_some?: { None: () => R } | ((value: T) => R), none?: (arg?: never) => R) {
+    match<R>(matcher_or_some?: { None: () => R } | ((value: never) => R), none?: (arg?: never) => R) {
         if ("None" in matcher_or_some!) {
             return (matcher_or_some as { None: () => R; }).None();
         }
